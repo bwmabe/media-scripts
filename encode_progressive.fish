@@ -52,7 +52,7 @@ function encode_file
 	set extra_params -x265-params "psy-rd=1.0:psy-rdoq=0.5"
     else
         # 480p
-        set crf 16
+        set crf 18
 	set extra_params -x265-params "psy-rd=1.0:psy-rdoq=0.5"
     end
 
