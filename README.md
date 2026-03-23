@@ -11,3 +11,4 @@ A set of video processing scripts using `ffmpeg`/`ffprobe`.
 | `fix_aspect.fish` | Remuxes MKVs in-place to force a specific aspect ratio (default 4:3) |
 | `scan_field_order.fish` | Reports the field order (interlaced vs progressive) of video files |
 | `rename_episodes.py` | Renames MKV files to `S##E##.mkv` format |
+| `extract_frame.fish` | Extracts a single frame as PNG at a given timestamp (default `00:00:30`); accepts `-t timestamp` and optional file args, otherwise globs `*.mkv` in cwd |
