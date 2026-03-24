@@ -108,11 +108,8 @@ function encode_file
 
     # CRF and x265 params
     if test $height -ge 2000
-        set crf 16
+        set crf 20
         set extra_params -x265-params "hdr10=1:hdr10-opt=1:repeat-headers=1"
-    else if test $height -ge 720
-        set crf 18
-        set extra_params -x265-params "psy-rd=1.0:psy-rdoq=0.5"
     else
         set crf 18
         set extra_params -x265-params "psy-rd=1.0:psy-rdoq=0.5"

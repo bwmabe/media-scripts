@@ -26,7 +26,7 @@ encode.fish --ivtc /shows/rocko/s01 /shows/rocko/s02 /shows/rocko/s03
 | Flag | Description |
 |---|---|
 | `-o <dir>` | Output directory for file inputs (default: `./converted`) |
-| `--crf <n>` | x265 CRF (default: auto by resolution — 480p=18, 1080p=18, 4K=16) |
+| `--crf <n>` | x265 CRF (default: auto by resolution — sub-4K=18, 4K=20) |
 | `--preset <p>` | x265 preset (default: `medium`, e.g. `slow`, `veryslow`) |
 | `--ivtc` | Inverse telecine (`fieldmatch,decimate`) for 24fps film content in 480i |
 | `-y` | IVTC + yadif deinterlacer for irregular pulldown or residual interlace artifacts |
