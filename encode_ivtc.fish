@@ -3,13 +3,15 @@
 # Encodes telecined 480i content (film-sourced cartoons) using IVTC + x265
 # Recovers original 24fps progressive frames via inverse telecine
 # Usage: encode_ivtc.fish [-o output_dir] <input_file|dir> [<input_file|dir> ...]
-#        output_dir defaults to ./converted
+#        output_dir defaults to ./converted (only applies to file inputs)
+#        when a directory is passed, output goes to <dir>/converted/
 #
 # Examples:
 #   encode_ivtc.fish episode.mkv
 #   encode_ivtc.fish /path/to/season/
 #   encode_ivtc.fish s01e01.mkv s01e02.mkv s01e03.mkv
-#   encode_ivtc.fish -o /output/path /path/to/season/
+#   encode_ivtc.fish -o /output/path episode.mkv
+#   encode_ivtc.fish /shows/rocko/s01 /shows/rocko/s02 /shows/rocko/s03
 
 set output_dir ./converted
 set inputs
@@ -58,9 +60,11 @@ for input in $inputs
     if test -f $input
         encode_file $input $output_dir
     else if test -d $input
+        set dir_output "$input/converted"
+        mkdir -p $dir_output
         for f in $input/*.mkv $input/*.mp4 $input/*.avi
             if test -f $f
-                encode_file $f $output_dir
+                encode_file $f $dir_output
             end
         end
     else
