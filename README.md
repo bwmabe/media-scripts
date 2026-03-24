@@ -38,3 +38,5 @@ encode_ivtc.fish /shows/rocko/s01 /shows/rocko/s02 /shows/rocko/s03
 | `-o <dir>` | Output directory for file inputs (default: `./converted`) |
 | `--crf <n>` | x265 CRF value (default: `18`, lower = better quality) |
 | `--preset <p>` | x265 preset (default: `medium`, e.g. `slow`, `veryslow`) |
+
+For 480i content deinterlaced with `--deint bwdif`, `--crf 16 --preset slow` has produced the best results.

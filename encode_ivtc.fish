@@ -86,7 +86,8 @@ function encode_file
     end
 
     time ffmpeg -fflags +igndts -i "$infile" \
-        -loglevel error \
+        -loglevel fatal \
+        -stats \
         -vf "$vf_chain" \
         -c:v libx265 \
         -crf $crf \
