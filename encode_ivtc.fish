@@ -2,11 +2,13 @@
 # encode_ivtc.fish
 # Encodes telecined 480i content (film-sourced cartoons) using IVTC + x265
 # Recovers original 24fps progressive frames via inverse telecine
-# Usage: encode_ivtc.fish [-o output_dir] [-y] <input_file|dir> [<input_file|dir> ...]
+# Usage: encode_ivtc.fish [-o output_dir] [-y] [--deint <filter>] <input_file|dir> [<input_file|dir> ...]
 #        output_dir defaults to ./converted (only applies to file inputs)
 #        when a directory is passed, output goes to <dir>/converted/
-#        -y: use fieldmatch,yadif,decimate instead of fieldmatch,decimate
+#        -y: use fieldmatch,<filter>=deint=interlaced,decimate instead of fieldmatch,decimate
 #            for content with irregular pulldown or residual interlace artifacts
+#        --deint <filter>: use the given filter only (no IVTC) for straight interlaced content
+#            common filters: yadif, bwdif, estdif, w3fdif
 #
 # Examples:
 #   encode_ivtc.fish episode.mkv
@@ -14,10 +16,12 @@
 #   encode_ivtc.fish s01e01.mkv s01e02.mkv s01e03.mkv
 #   encode_ivtc.fish -o /output/path episode.mkv
 #   encode_ivtc.fish -y /shows/rocko/s01 /shows/rocko/s02 /shows/rocko/s03
+#   encode_ivtc.fish --deint bwdif /shows/something/s01
 
 set output_dir ./converted
 set inputs
-set use_yadif 0
+set mode ivtc
+set deint_filter yadif
 
 # parse args
 set i 1
@@ -26,7 +30,11 @@ while test $i -le (count $argv)
         set i (math $i + 1)
         set output_dir $argv[$i]
     else if test $argv[$i] = -y
-        set use_yadif 1
+        set mode ivtc_yadif
+    else if test $argv[$i] = --deint
+        set mode deinterlace
+        set i (math $i + 1)
+        set deint_filter $argv[$i]
     else
         set inputs $inputs $argv[$i]
     end
@@ -34,7 +42,7 @@ while test $i -le (count $argv)
 end
 
 if test (count $inputs) -eq 0
-    echo "Usage: encode_ivtc.fish [-o output_dir] [-y] <input_file|dir> [<input_file|dir> ...]"
+    echo "Usage: encode_ivtc.fish [-o output_dir] [-y] [--deint <filter>] <input_file|dir> [<input_file|dir> ...]"
     exit 1
 end
 
@@ -43,16 +51,21 @@ mkdir -p $output_dir
 function encode_file
     set infile $argv[1]
     set outdir $argv[2]
-    set yadif $argv[3]
+    set mode $argv[3]
+    set deint_filter $argv[4]
     set filename (basename $infile)
     set outfile "$outdir/$filename"
 
-    if test $yadif -eq 1
-        set vf_chain "fieldmatch,yadif=deint=interlaced,decimate"
-        echo "Encoding (IVTC+yadif): $filename"
-    else
-        set vf_chain "fieldmatch,decimate"
-        echo "Encoding (IVTC): $filename"
+    switch $mode
+        case ivtc_yadif
+            set vf_chain "fieldmatch,$deint_filter=deint=interlaced,decimate"
+            echo "Encoding (IVTC+$deint_filter): $filename"
+        case deinterlace
+            set vf_chain "$deint_filter"
+            echo "Encoding ($deint_filter): $filename"
+        case '*'
+            set vf_chain "fieldmatch,decimate"
+            echo "Encoding (IVTC): $filename"
     end
 
     time ffmpeg -fflags +igndts -i "$infile" \
@@ -62,6 +75,7 @@ function encode_file
         -crf 18 \
         -preset medium \
         -c:a copy \
+        -async 1 \
         -c:s copy \
         "$outfile" -y
 
@@ -70,13 +84,13 @@ end
 
 for input in $inputs
     if test -f $input
-        encode_file $input $output_dir $use_yadif
+        encode_file $input $output_dir $mode $deint_filter
     else if test -d $input
         set dir_output "$input/converted"
         mkdir -p $dir_output
         for f in $input/*.mkv $input/*.mp4 $input/*.avi
             if test -f $f
-                encode_file $f $dir_output $use_yadif
+                encode_file $f $dir_output $mode $deint_filter
             end
         end
     else
