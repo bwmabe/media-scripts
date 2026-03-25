@@ -186,6 +186,7 @@ end
 
 for input in $inputs
     if test -f $input
+        mkdir -p $output_dir
         encode_file $input $output_dir
     else if test -d $input
         set dir_output "$input/converted"
