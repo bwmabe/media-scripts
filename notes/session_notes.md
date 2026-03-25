@@ -87,31 +87,32 @@ Mode crop (9/12 files): crop=536:480:92:0
 
 ---
 
-### `encode_progressive_crop.fish`
+### `encode.fish`
 
-x265 re-encode with automatic crop detection. Based on `encode_progressive.fish` with crop support added.
+Replaces `encode_progressive.fish`, `encode_ivtc.fish`, and `encode_progressive_crop.fish`. All functionality is now combined into one script with flags.
 
 **Flags:**
-- `-o output_dir` — output directory (default: `./converted`)
-- `-c crop=W:H:X:Y` — hardcode a crop value, skipping per-file auto-detection
+- `-o <dir>` — output directory for file inputs (default: `./converted`)
+- `--crf <n>` — x265 CRF (default: sub-4K=18, 4K=20)
+- `--preset <p>` — x265 preset (default: `medium`)
+- `--ivtc` — inverse telecine (`fieldmatch,decimate`) for film-sourced 480i
+- `-y` — IVTC + yadif for irregular pulldown
+- `--deint <filter>` — deinterlace only, no IVTC (e.g. `bwdif`, `yadif`)
+- `--crop [value]` — auto-detect crop, or supply `crop=W:H:X:Y` to skip detection
+
+Directories output to `<dir>/converted/`. Flags can be freely combined.
 
 **Usage:**
 ```sh
-encode_progressive_crop.fish -c crop=536:480:92:0 -o ./converted /path/to/season/
-encode_progressive_crop.fish movie.mkv
-encode_progressive_crop.fish /path/to/season/
+encode.fish movie.mkv
+encode.fish --ivtc /path/to/season/
+encode.fish --crop crop=536:480:92:0 -o ./converted /path/to/season/
+encode.fish --ivtc --crop --preset slow episode.mkv
 ```
 
-**CRF settings:**
-- 4K (2000p+): CRF 22, HDR10 flags
-- 1080p+: CRF 22
-- 480p and below: CRF 18
-
 **Notes:**
-- Auto-detection samples 1 min at the 5-minute mark, falls back to start for short files
-- Preserves source SAR via `setsar` after cropping
 - `-map 0` ensures all streams including subtitles are carried through
-- Always use `-c crop=...` for a whole season once you've verified the crop with ffplay
+- Always use `--crop crop=...` for a whole season once you've verified the crop with ffplay
 
 ---
 
@@ -143,7 +144,7 @@ fix_aspect.fish -a 16:9 *.mkv          # different aspect
 - **Workflow used**:
   1. `detect_mode_crop.fish` to find crop value
   2. Verify with `ffplay -vf crop=536:480:92:0 S03E01.mkv`
-  3. `encode_progressive_crop.fish -c crop=536:480:92:0 -o ./converted /path/to/season/`
+  3. `encode.fish --crop crop=536:480:92:0 -o ./converted /path/to/season/`
   4. `fix_aspect.fish` on the output to correct DAR to 4:3
 
 ---
@@ -161,7 +162,7 @@ detect_mode_crop.fish .
 ffplay -vf crop=W:H:X:Y S04E01.mkv
 
 # 4. Encode
-encode_progressive_crop.fish -c crop=W:H:X:Y -o ./converted .
+encode.fish --crop crop=W:H:X:Y -o ./converted .
 
 # 5. Fix aspect if needed (may not apply to other seasons)
 cd ./converted

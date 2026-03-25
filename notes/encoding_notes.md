@@ -172,23 +172,19 @@ Full film size at CRF 20 (1080p live action): ~4.5GB. Target is under 10GB.
 
 ---
 
-## Encode Scripts
+## Encode Script
 
-Two scripts: `encode_progressive.fish` and `encode_ivtc.fish`.
+Single script: `encode.fish`. Replaces the old `encode_progressive.fish`, `encode_ivtc.fish`, and `encode_progressive_crop.fish`.
 
-Both accept `-o output_dir` flag (default: `./converted`) and take any combination of individual files and directories as input.
+Accepts `-o output_dir` (default: `./converted`), file and directory inputs. Directories output to `<dir>/converted/`. CRF auto-selected by resolution (sub-4K=18, 4K=20), overridable with `--crf`. Preset defaults to `medium`, overridable with `--preset`. IVTC, deinterlace, and crop are flags that can be freely combined.
 
 ```fish
-# examples
-encode_progressive.fish movie.mkv
-encode_progressive.fish /media/Season1/
-encode_progressive.fish a.mkv b.mkv c.mkv
-encode_progressive.fish -o /media/encoded/ /media/Season1/
+encode.fish movie.mkv
+encode.fish --ivtc /shows/rocko/s01 /shows/rocko/s02
+encode.fish --ivtc --crop crop=536:480:92:0 --preset slow .
+encode.fish --deint bwdif --crf 16 episode.mkv
+encode.fish --crop movie.mkv
 ```
-
-`encode_progressive.fish` auto-detects resolution via ffprobe and applies appropriate CRF and HDR params.
-
-`encode_ivtc.fish` always applies `fieldmatch,decimate` and CRF 18 - only use for confirmed telecined content.
 
 ---
 
