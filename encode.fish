@@ -171,6 +171,7 @@ function encode_file
     time ffmpeg -fflags +igndts -i "$infile" \
         -map 0 \
         -loglevel error \
+        -stats \
         -c:v libx265 \
         -crf $crf \
         -preset $preset \
@@ -179,7 +180,7 @@ function encode_file
         -c:a copy \
         -async 1 \
         -c:s copy \
-        "$outfile" -y 2>&1 | grep -v "nal_unit_type: 63"
+        "$outfile" -y
 
     echo "Done: $outfile"
 end
