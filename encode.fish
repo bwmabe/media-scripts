@@ -8,7 +8,7 @@
 #
 # Flags:
 #   -o <dir>           Output directory for file inputs (default: ./converted)
-#   --crf <n>          x265 CRF (default: auto by resolution — 480p=18, 1080p=8, 4K=16)
+#   --crf <n>          x265 CRF (default: auto by resolution — sub-4K=18, 4K=20)
 #   --preset <p>       x265 preset (default: medium)
 #   --ivtc             Inverse telecine (fieldmatch,decimate) for 24fps film in 480i
 #   -y                 IVTC + yadif for irregular pulldown or residual interlace artifacts
@@ -77,6 +77,14 @@ if test (count $inputs) -eq 0
     exit 1
 end
 
+function fmt_duration
+    set secs (math --scale=0 "$argv[1]")
+    set h (math --scale=0 "$secs / 3600")
+    set m (math --scale=0 "($secs % 3600) / 60")
+    set s (math --scale=0 "$secs % 60")
+    printf "%02d:%02d:%02d" $h $m $s
+end
+
 function detect_crop
     set infile $argv[1]
     set crop_line (ffmpeg -ss 00:05:00 -i "$infile" \
@@ -98,12 +106,15 @@ function encode_file
     set filename (basename $infile)
     set outfile "$outdir/$filename"
 
-    # probe resolution
+    # probe resolution and duration
     set height (ffprobe -v error -select_streams v:0 \
         -show_entries stream=height \
         -of default=noprint_wrappers=1:nokey=1 "$infile")
     set width (ffprobe -v error -select_streams v:0 \
         -show_entries stream=width \
+        -of default=noprint_wrappers=1:nokey=1 "$infile")
+    set duration_s (ffprobe -v error \
+        -show_entries format=duration \
         -of default=noprint_wrappers=1:nokey=1 "$infile")
 
     # CRF and x265 params
@@ -168,10 +179,16 @@ function encode_file
 
     echo "Encoding: $filename ("$height"p, CRF $crf, $preset)"
 
-    time ffmpeg -fflags +igndts -i "$infile" \
+    # set up progress fifo
+    set fifo /tmp/encode_progress_(random)
+    mkfifo $fifo
+    set start_time (date +%s)
+
+    ffmpeg -fflags +igndts -i "$infile" \
         -map 0 \
         -loglevel error \
-        -stats \
+        -progress $fifo \
+        -nostats \
         -c:v libx265 \
         -crf $crf \
         -preset $preset \
@@ -180,9 +197,76 @@ function encode_file
         -c:a copy \
         -async 1 \
         -c:s copy \
-        "$outfile" -y
+        "$outfile" -y &
+    set ffmpeg_pid $last_pid
+    echo $ffmpeg_pid > /tmp/encode.pid
 
-    echo "Done: $outfile"
+    # parse progress from fifo
+    set out_time_ms 0
+    set fps "?"
+    set speed "?"
+    set duration_ms 0
+    if string match -qr '^\d' $duration_s
+        set duration_ms (math "round($duration_s * 1000)")
+    end
+
+    while read -l line
+        set parts (string split -m 1 '=' -- $line)
+        set key $parts[1]
+        set val $parts[2]
+
+        switch $key
+            case out_time_ms
+                if string match -qr '^\d' $val
+                    set out_time_ms $val
+                end
+            case fps
+                if test -n "$val" -a "$val" != "0.00"
+                    set fps $val
+                end
+            case speed
+                if test -n "$val"
+                    set speed $val
+                end
+            case progress
+                set current_s (math --scale=0 "$out_time_ms / 1000")
+
+                if test $duration_ms -gt 0
+                    set pct (math --scale=0 "$out_time_ms * 100 / $duration_ms")
+                    test $pct -gt 100; and set pct 100
+                    set total_s (math --scale=0 "$duration_ms / 1000")
+
+                    set speed_num (string replace -r 'x$' '' $speed)
+                    if string match -qr '^\d+\.?\d*$' $speed_num; and test (math "$speed_num > 0") = 1
+                        set remaining_s (math --scale=0 "($duration_ms - $out_time_ms) / 1000 / $speed_num")
+                        set eta (fmt_duration $remaining_s)
+                    else
+                        set eta "--:--:--"
+                    end
+
+                    printf "\r  %3d%% | %s / %s | %s fps | %s | ETA %s    " \
+                        $pct (fmt_duration $current_s) (fmt_duration $total_s) $fps $speed $eta
+                else
+                    printf "\r  %s fps | %s    " $fps $speed
+                end
+        end
+    end < $fifo
+
+    wait $ffmpeg_pid
+    set encode_exit $status
+    rm -f $fifo /tmp/encode.pid
+    printf "\n"
+
+    set end_time (date +%s)
+    set elapsed (math $end_time - $start_time)
+    set elapsed_m (math --scale=0 "$elapsed / 60")
+    set elapsed_s (math --scale=0 "$elapsed % 60")
+
+    if test $encode_exit -eq 0
+        echo "Done in "$elapsed_m"m "$elapsed_s"s: $filename"
+    else
+        echo "Failed (exit $encode_exit): $filename" >&2
+    end
     echo "────────────────────────────────────────"
 end
 
