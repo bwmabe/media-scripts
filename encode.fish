@@ -183,6 +183,7 @@ function encode_file
         "$outfile" -y
 
     echo "Done: $outfile"
+    echo "────────────────────────────────────────"
 end
 
 for input in $inputs
