@@ -5,6 +5,7 @@ A set of video processing scripts using `ffmpeg`/`ffprobe`.
 | Script | Purpose |
 |---|---|
 | [`encoder-thing/`](encoder-thing/) | x265 batch encoder with live TUI — queue, progress, keyboard controls |
+| [`ocr-title/`](ocr-title/) | OCR a frame from video files to extract on-screen episode title text |
 | `detect_mode_crop.fish` | Scans a directory of videos, detects crop values for each, and reports the most common (mode) crop |
 | `fix_aspect.fish` | Remuxes MKVs in-place to force a specific aspect ratio (default 4:3) |
 | `scan_field_order.fish` | Reports the field order (interlaced vs progressive) of video files from container metadata (fast but unreliable — metadata can be wrong) |
