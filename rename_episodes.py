@@ -29,6 +29,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Print what would be renamed without actually doing it",
     )
+    parser.add_argument(
+        "files",
+        nargs="*",
+        metavar="FILE",
+        help="Files to rename (default: all .mkv files in cwd, sorted)",
+    )
     return parser.parse_args()
 
 
@@ -47,18 +53,29 @@ def main() -> None:
         print("error: first-episode must be a positive integer", file=sys.stderr)
         sys.exit(1)
 
-    cwd = Path.cwd()
-    mkv_files = sorted(cwd.glob("*.mkv"))
+    if args.files:
+        mkv_files = []
+        for arg in args.files:
+            p = Path(arg)
+            if p.is_dir():
+                mkv_files.extend(sorted(p.glob("*.mkv")))
+            elif p.exists():
+                mkv_files.append(p)
+            else:
+                print(f"error: not found: {p}", file=sys.stderr)
+                sys.exit(1)
+    else:
+        mkv_files = sorted(Path.cwd().glob("*.mkv"))
 
     if not mkv_files:
-        print("no .mkv files found in the current directory", file=sys.stderr)
+        print("no .mkv files found", file=sys.stderr)
         sys.exit(1)
 
     renames: list[tuple[Path, Path]] = []
     for i, src in enumerate(mkv_files):
         episode = first_episode + i
         new_name = f"S{season:02d}E{episode:02d}.mkv"
-        dst = cwd / new_name
+        dst = src.parent / new_name
         renames.append((src, dst))
 
     # Check for collisions before doing anything
